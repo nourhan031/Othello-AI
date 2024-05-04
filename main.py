@@ -29,6 +29,21 @@ def create_board():
 
     return board
 
-for row in create_board():
-    print(' '.join(row))
-print()
+# for row in create_board():
+#     print(' '.join(row))
+# print()
+
+def print_board(board):
+    print("     ", end="") # print 5 spaces and prevent adding a new line
+    for i in range(len(board)): # print col no. at the top
+        print(f"{i}    ", end="") # f-str to format each i with 4 spaces after it
+    print()
+    for i, row in enumerate(board): # loop over each row, 'enum' provides the index 'i' (row no.) and 'row' (actual row data)
+        print(f"{i} ", end=" ") # print row no. at the st of each row
+        for j, cell in enumerate(row): # iterate over each cell in the current row
+            print(f'| {cell} ', end=' ') # print '|' followed by the cell's value and a space
+        print('|') # printed at the end of each row
+        print("  ", end="") # space bet each printed no. at the top of the table
+        print("------" * len(board)) # print a line of dashes under each row (its no. is eq. to that of the table's columns)
+
+print_board(create_board())
