@@ -1,7 +1,26 @@
 import copy
 
+DEFAULT_DIFFICULTY = "Medium"
+
+def choose_difficulty():
+    while True:
+        print("Choose difficulty level:")
+        print("1. Easy")
+        print("2. Medium")
+        print("3. Hard")
+        choice = input("Enter your choice (1, 2, or 3): ")
+
+        if choice == '1':
+            return "Easy"
+        elif choice == '2':
+            return "Medium"
+        elif choice == '3':
+            return "Hard"
+        else:
+            print("Invalid choice. Please enter 1, 2, or 3.")
+
 class OthelloGame:
-    def __init__(self, difficulty="Medium"):
+    def __init__(self, difficulty=DEFAULT_DIFFICULTY):
         self.board = [[' ' for _ in range(8)] for _ in range(8)]
         self.board[3][3] = 'W'  # Initial setup: Place two white disks at the center
         self.board[4][4] = 'W'
@@ -44,7 +63,8 @@ class OthelloGame:
         try:
             row, col = map(int, move_str.split())
             if (row, col) in valid_moves:
-                self.make_move(row, col)
+                # self.make_move(row, col)
+                self.make_move(self.board, row, col)
             else:
                 print("Invalid move. Try again.")
                 self.human_move()
@@ -53,10 +73,16 @@ class OthelloGame:
             self.human_move()
 
     def computer_move(self):
-        depth = self.difficulty_to_depth()
+        # depth = self.difficulty_to_depth()
+        if self.difficulty == "Easy":
+            depth = 1
+        else:
+            depth = self.difficulty_to_depth()
+
         eval, move = self.alpha_beta_pruning(self.board, depth, float('-inf'), float('inf'), True)
         if move is not None:
-            self.make_move(*move)
+            # self.make_move(*move)
+            self.make_move(self.board, move[0], move[1])
             self.print_board()
             print(f"Computer plays at row {move[0]}, column {move[1]}")
         else:
@@ -90,26 +116,39 @@ class OthelloGame:
             c += dc
         return False
 
-    def make_move(self, row, col):
-        self.board[row][col] = self.current_player
+    # operates on the existing self.board and takes 2 args: row and col -> caused the error in the pruning func
+    # therefore, i modified it so that
+    # it accepts the board as an additional arg,
+    # allowing it to make a move on any board -> (board_copy)
+
+    def make_move(self, board, row, col):
+        # self.board[row][col] = self.current_player
+        board[row][col] = self.current_player
         self.remaining_disks -= 1
+
         if self.current_player == 'B':
             self.black_disks += 1
             self.white_disks -= 1
         else:
             self.white_disks += 1
             self.black_disks -= 1
+
         for dr in [-1, 0, 1]:
             for dc in [-1, 0, 1]:
                 if dr == 0 and dc == 0:
                     continue
-                if self.is_valid_direction(self.board, row, col, dr, dc):
-                    self.flip_discs(row, col, dr, dc)
+                # if self.is_valid_direction(self.board, row, col, dr, dc):
+                if self.is_valid_direction(board, row, col, dr, dc):
+                    self.flip_discs(board, row, col, dr, dc)
+                    # self.flip_discs(row, col, dr, dc) <- MISSING ARG
 
-    def flip_discs(self, row, col, dr, dc):
+    # modified it to work with any board instead of relying on self.board
+    def flip_discs(self, board, row, col, dr, dc):
         r, c = row + dr, col + dc
-        while self.board[r][c] == self.other_player:
-            self.board[r][c] = self.current_player
+        # while self.board[r][c] == self.other_player:
+        while board[r][c] == self.other_player:
+            # self.board[r][c] = self.current_player
+            board[r][c] = self.current_player
             r += dr
             c += dc
 
@@ -142,30 +181,38 @@ class OthelloGame:
             best_move = None
             for move in self.get_valid_moves():
                 board_copy = copy.deepcopy(board)
-                if move is not None:
-                    self.make_move(board_copy, move[0], move[1])  # Corrected call to make_move
-                    eval, _ = self.alpha_beta_pruning(board_copy, depth - 1, alpha, beta, False)
-                    if eval > max_eval:
-                        max_eval = eval
-                        best_move = move
-                    alpha = max(alpha, eval)
-                    if beta <= alpha:
-                        break
+                # if move is not None:
+                self.make_move(board_copy, move[0], move[1])
+                eval, _ = self.alpha_beta_pruning(board_copy, depth - 1, alpha, beta, False)
+
+                if eval > max_eval:
+                    max_eval = eval
+                    best_move = move
+
+                alpha = max(alpha, eval)
+
+                if beta <= alpha:
+                    break
             return (max_eval, best_move)
         else:
             min_eval = float('inf')
             best_move = None
+
             for move in self.get_valid_moves():
                 board_copy = copy.deepcopy(board)
-                if move is not None:
-                    self.make_move(board_copy, move[0], move[1])  # Corrected call to make_move
-                    eval, _ = self.alpha_beta_pruning(board_copy, depth - 1, alpha, beta, True)
-                    if eval < min_eval:
-                        min_eval = eval
-                        best_move = move
-                    beta = min(beta, eval)
-                    if beta <= alpha:
-                        break
+                # if move is not None:
+                self.make_move(board_copy, move[0], move[1])
+                eval, _ = self.alpha_beta_pruning(board_copy, depth - 1, alpha, beta, True)
+
+                if eval < min_eval:
+                    min_eval = eval
+                    best_move = move
+
+                beta = min(beta, eval)
+
+                if beta <= alpha:
+                    break
+
             return (min_eval, best_move)
 
     def evaluate_board(self, board):
@@ -181,14 +228,21 @@ class OthelloGame:
         elif self.difficulty == "Hard":
             return 5
         else:
-            return 3
+            return 3 # default
 
     def print_winner(self):
         winner = self.get_winner()
-        print(f"The winner is {winner}!")
+
+        if winner == "Tie":
+            print("The game is a tie!")
+        else:
+            print(f"The winner is {winner}!")
+        # print(f"The winner is {winner}!")
+
 
 # Create an instance of the Othello game with the initial setup
-game = OthelloGame(difficulty="Medium")
+difficulty_level = choose_difficulty()
+game = OthelloGame(difficulty=difficulty_level)
 
 # Start the game
 game.play()
