@@ -1,125 +1,194 @@
-"""
-1- game state representation:
-    1- board config
-    2- player's turn
-2- move generation:
-    1- gen all possible moves for a given game state
-3- eval function:
-    *done from the perspective of a player (need to read more abt this)*
-4- alpha-beta pruning:
-    a search algorithm used to improve the performance of the minimax algorithm.
-    It reduces the number of nodes that need to be evaluated by pruning branches
-     of the game tree that are determined to be irrelevant.
-5- loop:
-    players alternate turns -> game state is updated after each move and the game
-    ends when there are no valid moves left
-"""
+import copy
 
+class OthelloGame:
+    def __init__(self, difficulty="Medium"):
+        self.board = [[' ' for _ in range(8)] for _ in range(8)]
+        self.board[3][3] = 'W'  # Initial setup: Place two white disks at the center
+        self.board[4][4] = 'W'
+        self.board[3][4] = 'B'  # Initial setup: Place two black disks at the center
+        self.board[4][3] = 'B'
+        self.current_player = 'B'
+        self.other_player = 'W'
+        self.difficulty = difficulty  # Difficulty level attribute
 
-class Game:
-    def __init__(self):
-        # init the board and set the first player's turn
-        self.board = self.create_board()
-        # self.player_turn = 'B'  # black goes first
-        self.player_turn = None
-        self.user_color = None  # the player's chosen color
-        self.computer_color = None
+        # Distribute remaining disks evenly between players
+        self.remaining_disks = 60
+        self.black_disks = 30
+        self.white_disks = 30
 
-    def create_board(self):
-        # 8x8 board initialized with ' '
-        board = [[' ' for _ in range(8)] for _ in range(8)]
-        """
-            [3][3],[4][4]: init to white
-            [3][4],[4][3]: init to black
-        """
-        board[3][3] = 'W'
-        board[3][4] = 'B'
-        board[4][3] = 'B'
-        board[4][4] = 'W'
-
-        return board
+    def play(self):
+        while not self.is_game_over():
+            self.print_board()
+            if self.current_player == 'B':
+                self.human_move()
+            else:
+                self.computer_move()
+            self.current_player, self.other_player = self.other_player, self.current_player
+        self.print_board()
+        self.print_winner()
 
     def print_board(self):
-        # Print column indices at the top
-        print("     ", end="") # print 5 spaces and prevent adding a new line
-        for i in range(len(self.board)): # print col no. at the top
-            print(f"{i}    ", end="") # f-str to format each i with 4 spaces after it
-        print()
-        """
-        loop over each row,
-        'enum' provides the index 'i' (row no.) 
-        and 'row' (actual row data)
-        """
-        for i, row in enumerate(self.board):
-            print(f"{i} ", end=" ") # print row no. at the st of each row
-            for cell in row: # iterate over each cell in the current row
-                print(f"| {cell} ", end=" ") # print '|' followed by the cell's value and a space
-            print("|") # printed at the end of each row
-            print("  " + "------" * len(self.board)) # print a line of dashes under each row (its no. is eq. to that of the table's columns)
+        print("\n  0 1 2 3 4 5 6 7")
+        print(" +-+-+-+-+-+-+-+-+")
+        for i in range(8):
+            print(f"{i}|{'|'.join(self.board[i])}|")
+            print(" +-+-+-+-+-+-+-+-+")
 
-    def switch_turn(self):
-        # switches the player turn between 'B' and 'W'
-        self.player_turn = 'W' if self.player_turn == 'B' else 'B'
-
-    def choose_color(self):
-        color_choice = input("Choose a color to play with (W for White, B for Black): ").strip().upper()
-        if color_choice in ["W", "B"]:
-            self.user_color = color_choice
-            self.computer_color = 'W' if color_choice == 'B' else 'B'
-            # std rules: black goes first
-            self.player_turn = 'B'
-        else:
-            print("Invalid choice, defaulting to Black.")
-            self.user_color = 'B'  # default to Black if invalid input
-            self.computer_color = 'W'
-            self.player_turn = 'B'
-
-    def user_move(self):
-        # ask the user for a move and update the board
-        while True:
-            try:
-                row = int(input("Enter the row: "))
-                col = int(input("Enter the column: "))
-                if 0 <= row < 8 and 0 <= col < 8 and self.board[row][col] == ' ':
-                    self.board[row][col] = self.player_turn
-                    break
-                else:
-                    print("Invalid move. The position is either out of bounds or already taken.")
-            except ValueError:
-                print("Invalid input. Please enter valid row and column numbers.")
-
-    def play_game(self):
-        # main game loop
-        self.choose_color()  # ssk the user to choose a color
-
-        while True:  # infinite loop (STOPPING CRITERIA IS TO BE IMPLEMENTED LATER)
-            # print the current board
-            self.print_board()
-
-            print(f"It's {self.player_turn}'s turn.")
-
-            if self.player_turn == self.user_color:
-                # user's turn
-                self.user_move()  # ask the user to make a move
+    def human_move(self):
+        valid_moves = self.get_valid_moves()
+        if not valid_moves:
+            print("No valid moves. Skipping turn.")
+            return
+        print("Valid moves:", valid_moves)
+        move_str = input("Enter row and column separated by space (e.g., 2 3): ")
+        try:
+            row, col = map(int, move_str.split())
+            if (row, col) in valid_moves:
+                self.make_move(row, col)
             else:
-                # computer's turn (TO BE IMPLEMENTED!!!!)
-                print("computer's turn.")
+                print("Invalid move. Try again.")
+                self.human_move()
+        except ValueError:
+            print("Invalid input format. Please enter two integers separated by space.")
+            self.human_move()
 
-            # switch turn after a move
-            self.switch_turn()
+    def computer_move(self):
+        depth = self.difficulty_to_depth()
+        eval, move = self.alpha_beta_pruning(self.board, depth, float('-inf'), float('inf'), True)
+        if move is not None:
+            self.make_move(*move)
+            self.print_board()
+            print(f"Computer plays at row {move[0]}, column {move[1]}")
+        else:
+            print("No valid moves for the computer.")
 
-            # IMPLEMENT STOPPING CRITERIA
-            # fixed number of moves (for now)
-            if sum(row.count(' ') for row in self.board) <= (64 - 10):  # 10 moves total
-                break
+    def is_valid_move(self, board, row, col):
+        if board[row][col] != ' ':
+            return False
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                if dr == 0 and dc == 0:
+                    continue
+                if self.is_valid_direction(board, row, col, dr, dc):
+                    return True
+        return False
 
-        # final board state
-        self.print_board()
-        print("Game over!")
+    def is_valid_direction(self, board, row, col, dr, dc):
+        r, c = row + dr, col + dc
+        if not (0 <= r < 8 and 0 <= c < 8):
+            return False
+        if board[r][c] != self.other_player:
+            return False
+        r += dr
+        c += dc
+        while 0 <= r < 8 and 0 <= c < 8:
+            if board[r][c] == ' ':
+                return False
+            if board[r][c] == self.current_player:
+                return True
+            r += dr
+            c += dc
+        return False
 
+    def make_move(self, row, col):
+        self.board[row][col] = self.current_player
+        self.remaining_disks -= 1
+        if self.current_player == 'B':
+            self.black_disks += 1
+            self.white_disks -= 1
+        else:
+            self.white_disks += 1
+            self.black_disks -= 1
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                if dr == 0 and dc == 0:
+                    continue
+                if self.is_valid_direction(self.board, row, col, dr, dc):
+                    self.flip_discs(row, col, dr, dc)
 
-# create game instance
-game = Game()
+    def flip_discs(self, row, col, dr, dc):
+        r, c = row + dr, col + dc
+        while self.board[r][c] == self.other_player:
+            self.board[r][c] = self.current_player
+            r += dr
+            c += dc
 
-# st. game loop
-game.play_game()
+    def is_game_over(self):
+        return self.remaining_disks == 0 or not self.get_valid_moves()
+
+    def get_winner(self):
+        black_count = sum(row.count('B') for row in self.board)
+        white_count = sum(row.count('W') for row in self.board)
+        if black_count > white_count:
+            return 'Black'
+        elif white_count > black_count:
+            return 'White'
+        else:
+            return 'Tie'
+
+    def get_valid_moves(self):
+        valid_moves = []
+        for i in range(8):
+            for j in range(8):
+                if self.is_valid_move(self.board, i, j):
+                    valid_moves.append((i, j))
+        return valid_moves
+
+    def alpha_beta_pruning(self, board, depth, alpha, beta, maximizing_player):
+        if depth == 0 or self.is_game_over():
+            return (self.evaluate_board(board), None)  # Returning evaluation and None for move
+        if maximizing_player:
+            max_eval = float('-inf')
+            best_move = None
+            for move in self.get_valid_moves():
+                board_copy = copy.deepcopy(board)
+                if move is not None:
+                    self.make_move(board_copy, move[0], move[1])  # Corrected call to make_move
+                    eval, _ = self.alpha_beta_pruning(board_copy, depth - 1, alpha, beta, False)
+                    if eval > max_eval:
+                        max_eval = eval
+                        best_move = move
+                    alpha = max(alpha, eval)
+                    if beta <= alpha:
+                        break
+            return (max_eval, best_move)
+        else:
+            min_eval = float('inf')
+            best_move = None
+            for move in self.get_valid_moves():
+                board_copy = copy.deepcopy(board)
+                if move is not None:
+                    self.make_move(board_copy, move[0], move[1])  # Corrected call to make_move
+                    eval, _ = self.alpha_beta_pruning(board_copy, depth - 1, alpha, beta, True)
+                    if eval < min_eval:
+                        min_eval = eval
+                        best_move = move
+                    beta = min(beta, eval)
+                    if beta <= alpha:
+                        break
+            return (min_eval, best_move)
+
+    def evaluate_board(self, board):
+        black_count = sum(row.count('B') for row in board)
+        white_count = sum(row.count('W') for row in board)
+        return black_count - white_count
+
+    def difficulty_to_depth(self):
+        if self.difficulty == "Easy":
+            return 1
+        elif self.difficulty == "Medium":
+            return 3
+        elif self.difficulty == "Hard":
+            return 5
+        else:
+            return 3
+
+    def print_winner(self):
+        winner = self.get_winner()
+        print(f"The winner is {winner}!")
+
+# Create an instance of the Othello game with the initial setup
+game = OthelloGame(difficulty="Medium")
+
+# Start the game
+game.play()
