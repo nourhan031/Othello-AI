@@ -1,23 +1,128 @@
 import copy
+import tkinter as tk
 
 DEFAULT_DIFFICULTY = "Medium"
 
-def choose_difficulty():
-    while True:
-        print("Choose difficulty level:")
-        print("1. Easy")
-        print("2. Medium")
-        print("3. Hard")
-        choice = input("Enter your choice (1, 2, or 3): ")
+class OthelloGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Othello")
 
-        if choice == '1':
-            return "Easy"
-        elif choice == '2':
-            return "Medium"
-        elif choice == '3':
-            return "Hard"
+        self.canvas = tk.Canvas(root, width=400, height=400)
+        self.canvas.pack()
+
+        self.current_player = 'B'  # Initialize current player attribute
+        self.game = OthelloGame(difficulty=DEFAULT_DIFFICULTY)
+
+        self.draw_board()
+        self.draw_info_panel()
+        self.draw_difficulty_button()
+        self.draw_scoreboard()
+
+    def draw_board(self):
+        for i in range(8):
+            for j in range(8):
+                x0, y0 = i * 50, j * 50
+                x1, y1 = x0 + 50, y0 + 50
+                self.canvas.create_rectangle(x0, y0, x1, y1, fill="green")
+                # Add logic to draw disks based on the game state
+                if self.game.board[i][j] == 'B':
+                    self.canvas.create_oval(x0 + 5, y0 + 5, x1 - 5, y1 - 5, fill="black")
+                elif self.game.board[i][j] == 'W':
+                    self.canvas.create_oval(x0 + 5, y0 + 5, x1 - 5, y1 - 5, fill="white")
+
+    def draw_info_panel(self):
+        self.info_panel = tk.Frame(self.root)
+        self.info_panel.pack()
+
+        self.status_label = tk.Label(self.info_panel, text=f"Current player: {self.current_player}")
+        self.status_label.pack()
+
+        self.result_label = tk.Label(self.info_panel, text="")
+        self.result_label.pack()
+
+    def draw_difficulty_button(self):
+        self.difficulty_frame = tk.Frame(self.root)
+        self.difficulty_frame.pack()
+
+        self.difficulty_label = tk.Label(self.difficulty_frame, text="Select Difficulty:")
+        self.difficulty_label.pack(side=tk.LEFT)
+
+        self.easy_button = tk.Button(self.difficulty_frame, text="Easy", command=lambda: self.start_game("Easy"))
+        self.easy_button.pack(side=tk.LEFT)
+
+        self.medium_button = tk.Button(self.difficulty_frame, text="Medium", command=lambda: self.start_game("Medium"))
+        self.medium_button.pack(side=tk.LEFT)
+
+        self.hard_button = tk.Button(self.difficulty_frame, text="Hard", command=lambda: self.start_game("Hard"))
+        self.hard_button.pack(side=tk.LEFT)
+
+    def draw_scoreboard(self):
+        self.score_frame = tk.Frame(self.root)
+        self.score_frame.pack()
+
+        self.black_score_label = tk.Label(self.score_frame, text="Black: 2")
+        self.black_score_label.pack(side=tk.LEFT)
+
+        self.white_score_label = tk.Label(self.score_frame, text="White: 2")
+        self.white_score_label.pack(side=tk.LEFT)
+
+    def start_game(self, difficulty):
+        self.game = OthelloGame(difficulty=difficulty)
+        self.current_player = 'B'  # Reset current player
+        self.status_label.config(text=f"Current player: {self.current_player}")
+        self.result_label.config(text="")
+        self.update_board()
+        self.update_scoreboard()
+        if self.game.current_player == 'W':
+            self.computer_move()
+
+    def bind_board_clicks(self):
+        self.canvas.bind("<Button-1>", self.on_click)
+
+    def on_click(self, event):
+        col = event.x // 50
+        row = event.y // 50
+        if self.game.is_valid_move(row, col):
+            self.game.make_move(row, col)
+            self.update_board()
+            self.update_info()
+            self.update_scoreboard()
+            if not self.game.is_game_over() and self.game.current_player == 'W':
+                self.computer_move()
+
+    def update_board(self):
+        self.canvas.delete("all")
+        self.draw_board()
+
+    def update_info(self):
+        self.status_label.config(text=f"Current player: {self.game.current_player}")
+        self.result_label.config(text="")
+        if self.game.is_game_over():
+            winner = self.game.get_winner()
+            if winner == "Tie":
+                self.result_label.config(text="The game is a tie!")
+            else:
+                self.result_label.config(text=f"The winner is {winner}!")
+
+    def update_scoreboard(self):
+        black_count = sum(row.count('B') for row in self.game.board)
+        white_count = sum(row.count('W') for row in self.game.board)
+        self.black_score_label.config(text=f"Black: {black_count}")
+        self.white_score_label.config(text=f"White: {white_count}")
+
+    def computer_move(self):
+        if self.game.difficulty == "Easy":
+            depth = 1
         else:
-            print("Invalid choice. Please enter 1, 2, or 3.")
+            depth = self.game.difficulty_to_depth()
+
+        eval, move = self.game.alpha_beta_pruning(self.game.board, depth, float('-inf'), float('inf'), True)
+        if move is not None:
+            self.game.make_move(move[0], move[1])
+            self.update_board()
+            self.update_info()
+            self.update_scoreboard()
 
 class OthelloGame:
     def __init__(self, difficulty=DEFAULT_DIFFICULTY):
@@ -230,19 +335,11 @@ class OthelloGame:
         else:
             return 3 # default
 
-    def print_winner(self):
-        winner = self.get_winner()
+def main():
+    root = tk.Tk()
+    gui = OthelloGUI(root)
+    gui.bind_board_clicks()
+    root.mainloop()
 
-        if winner == "Tie":
-            print("The game is a tie!")
-        else:
-            print(f"The winner is {winner}!")
-        # print(f"The winner is {winner}!")
-
-
-# Create an instance of the Othello game with the initial setup
-difficulty_level = choose_difficulty()
-game = OthelloGame(difficulty=difficulty_level)
-
-# Start the game
-game.play()
+if __name__ == "__main__":
+    main()
