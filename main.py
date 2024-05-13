@@ -1,353 +1,218 @@
-import copy
-import tkinter as tk
+# Importing the necessary libraries
+import pygame  # Pygame library for game development
+import copy    # Copy module for creating copies of objects
+import random  # Random module for generating random numbers
 
-DEFAULT_DIFFICULTY = "Medium"
+# Define RGB color constants
+BLACK = (0, 0, 0)    # RGB tuple for black color
+WHITE = (255, 255, 255)  # RGB tuple for white color
+GREEN = (0, 128, 0)   # RGB tuple for green color
 
-class OthelloGUI:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Othello")
+# Define window size and grid size constants
+WINDOW_SIZE = (400, 400)  # Size of the game window
+GRID_SIZE = 8              # Size of the game grid
+SQUARE_SIZE = WINDOW_SIZE[0] // GRID_SIZE  # Size of each square in the grid
 
-        self.canvas = tk.Canvas(root, width=400, height=400)
-        self.canvas.pack()
+# Initialize pygame
+pygame.init()
+screen = pygame.display.set_mode(WINDOW_SIZE)  # Creating the game window
+pygame.display.set_caption("Othello")  # Setting the window title
 
-        self.current_player = 'B'  # Initialize current player attribute
-        self.game = OthelloGame(difficulty=DEFAULT_DIFFICULTY)
+# Function to draw the board
+def draw_board(board):
+    screen.fill(GREEN)  # Fill the screen with green color
 
-        self.draw_board()
-        self.draw_info_panel()
-        self.draw_difficulty_button()
-        self.draw_scoreboard()
+    # Drawing the grid and pieces on the board
+    for i in range(GRID_SIZE):
+        for j in range(GRID_SIZE):
+            # Define the rectangle for the current grid square
+            rect = pygame.Rect(j * SQUARE_SIZE, i * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
+            pygame.draw.rect(screen, BLACK, rect, 1)  # Draw grid lines
 
-    def draw_board(self):
-        for i in range(8):
-            for j in range(8):
-                x0, y0 = i * 50, j * 50
-                x1, y1 = x0 + 50, y0 + 50
-                self.canvas.create_rectangle(x0, y0, x1, y1, fill="green")
-                # Add logic to draw disks based on the game state
-                if self.game.board[i][j] == 'B':
-                    self.canvas.create_oval(x0 + 5, y0 + 5, x1 - 5, y1 - 5, fill="black")
-                elif self.game.board[i][j] == 'W':
-                    self.canvas.create_oval(x0 + 5, y0 + 5, x1 - 5, y1 - 5, fill="white")
+            # Draw a black circle if the current square contains a black piece
+            if board[i][j] == 'B':
+                pygame.draw.circle(screen, BLACK,
+                                   (j * SQUARE_SIZE + SQUARE_SIZE // 2, i * SQUARE_SIZE + SQUARE_SIZE // 2),
+                                   SQUARE_SIZE // 2 - 2)
+            # Draw a white circle if the current square contains a white piece
+            elif board[i][j] == 'W':
+                pygame.draw.circle(screen, WHITE,
+                                   (j * SQUARE_SIZE + SQUARE_SIZE // 2, i * SQUARE_SIZE + SQUARE_SIZE // 2),
+                                   SQUARE_SIZE // 2 - 2)
 
-    def draw_info_panel(self):
-        self.info_panel = tk.Frame(self.root)
-        self.info_panel.pack()
+    pygame.display.flip()  # Update the display
 
-        self.status_label = tk.Label(self.info_panel, text=f"Current player: {self.current_player}")
-        self.status_label.pack()
 
-        self.result_label = tk.Label(self.info_panel, text="")
-        self.result_label.pack()
 
-    def draw_difficulty_button(self):
-        self.difficulty_frame = tk.Frame(self.root)
-        self.difficulty_frame.pack()
 
-        self.difficulty_label = tk.Label(self.difficulty_frame, text="Select Difficulty:")
-        self.difficulty_label.pack(side=tk.LEFT)
-
-        self.easy_button = tk.Button(self.difficulty_frame, text="Easy", command=lambda: self.start_game("Easy"))
-        self.easy_button.pack(side=tk.LEFT)
-
-        self.medium_button = tk.Button(self.difficulty_frame, text="Medium", command=lambda: self.start_game("Medium"))
-        self.medium_button.pack(side=tk.LEFT)
-
-        self.hard_button = tk.Button(self.difficulty_frame, text="Hard", command=lambda: self.start_game("Hard"))
-        self.hard_button.pack(side=tk.LEFT)
-
-    def draw_scoreboard(self):
-        self.score_frame = tk.Frame(self.root)
-        self.score_frame.pack()
-
-        self.black_score_label = tk.Label(self.score_frame, text="Black: 2")
-        self.black_score_label.pack(side=tk.LEFT)
-
-        self.white_score_label = tk.Label(self.score_frame, text="White: 2")
-        self.white_score_label.pack(side=tk.LEFT)
-
-    def start_game(self, difficulty):
-        self.game = OthelloGame(difficulty=difficulty)
-        self.current_player = 'B'  # Reset current player
-        self.status_label.config(text=f"Current player: {self.current_player}")
-        self.result_label.config(text="")
-        self.update_board()
-        self.update_scoreboard()
-        if self.game.current_player == 'W':
-            self.computer_move()
-
-    def bind_board_clicks(self):
-        self.canvas.bind("<Button-1>", self.on_click)
-
-    def on_click(self, event):
-        col = event.x // 50
-        row = event.y // 50
-        # if self.game.is_valid_move(row, col):
-        if self.game.is_valid_move(self.game.board, row, col):
-            # self.game.make_move(row, col)
-            self.game.make_move(self.game.board, row, col)
-            self.update_board()
-            self.update_info()
-            self.update_scoreboard()
-            if not self.game.is_game_over() and self.game.current_player == 'W':
-                self.computer_move()
-
-    def update_board(self):
-        self.canvas.delete("all")
-        self.draw_board()
-
-    def update_info(self):
-        self.status_label.config(text=f"Current player: {self.game.current_player}")
-        self.result_label.config(text="")
-        if self.game.is_game_over():
-            winner = self.game.get_winner()
-            if winner == "Tie":
-                self.result_label.config(text="The game is a tie!")
-            else:
-                self.result_label.config(text=f"The winner is {winner}!")
-
-    def update_scoreboard(self):
-        black_count = sum(row.count('B') for row in self.game.board)
-        white_count = sum(row.count('W') for row in self.game.board)
-        self.black_score_label.config(text=f"Black: {black_count}")
-        self.white_score_label.config(text=f"White: {white_count}")
-
-    def computer_move(self):
-        if self.game.difficulty == "Easy":
-            depth = 1
-        else:
-            depth = self.game.difficulty_to_depth()
-
-        eval, move = self.game.alpha_beta_pruning(self.game.board, depth, float('-inf'), float('inf'), True)
-        if move is not None:
-            self.game.make_move(move[0], move[1])
-            self.update_board()
-            self.update_info()
-            self.update_scoreboard()
-
-class OthelloGame:
-    def __init__(self, difficulty=DEFAULT_DIFFICULTY):
-        self.board = [[' ' for _ in range(8)] for _ in range(8)]
-        self.board[3][3] = 'W'  # Initial setup: Place two white disks at the center
-        self.board[4][4] = 'W'
-        self.board[3][4] = 'B'  # Initial setup: Place two black disks at the center
-        self.board[4][3] = 'B'
-        self.current_player = 'B'
-        self.other_player = 'W'
-        self.difficulty = difficulty  # Difficulty level attribute
-
-        # Distribute remaining disks evenly between players
-        self.remaining_disks = 60
-        self.black_disks = 30
-        self.white_disks = 30
-
-    def play(self):
-        while not self.is_game_over():
-            self.print_board()
-            if self.current_player == 'B':
-                self.human_move()
-            else:
-                self.computer_move()
-            self.current_player, self.other_player = self.other_player, self.current_player
-        self.print_board()
-        self.print_winner()
-
-    def print_board(self):
-        print("\n  0 1 2 3 4 5 6 7")
-        print(" +-+-+-+-+-+-+-+-+")
-        for i in range(8):
-            print(f"{i}|{'|'.join(self.board[i])}|")
-            print(" +-+-+-+-+-+-+-+-+")
-
-    def human_move(self):
-        valid_moves = self.get_valid_moves()
-        if not valid_moves:
-            print("No valid moves. Skipping turn.")
-            return
-        print("Valid moves:", valid_moves)
-        move_str = input("Enter row and column separated by space (e.g., 2 3): ")
-        try:
-            row, col = map(int, move_str.split())
-            if (row, col) in valid_moves:
-                # self.make_move(row, col)
-                self.make_move(self.board, row, col)
-            else:
-                print("Invalid move. Try again.")
-                self.human_move()
-        except ValueError:
-            print("Invalid input format. Please enter two integers separated by space.")
-            self.human_move()
-
-    def computer_move(self):
-        # depth = self.difficulty_to_depth()
-        if self.difficulty == "Easy":
-            depth = 1
-        else:
-            depth = self.difficulty_to_depth()
-
-        # eval, move = self.alpha_beta_pruning(self.board, depth, float('-inf'), float('inf'), True)
-        board_copy = copy.deepcopy(self.game.board)
-        eval, move = self.game.alpha_beta_pruning(board_copy, depth, float('-inf'), float('inf'), True)
-        if move is not None:
-            # self.make_move(*move)
-            # self.make_move(self.board, move[0], move[1])
-            self.game.make_move(board_copy, move[0], move[1])
-            self.update_board()
-            self.update_info()
-            self.update_scoreboard()
-        #     self.print_board()
-        #     print(f"Computer plays at row {move[0]}, column {move[1]}")
-        else:
-            print("No valid moves for the computer.")
-
-    def is_valid_move(self, board, row, col):
-        if board[row][col] != ' ':
-            return False
-        for dr in [-1, 0, 1]:
-            for dc in [-1, 0, 1]:
-                if dr == 0 and dc == 0:
-                    continue
-                if self.is_valid_direction(board, row, col, dr, dc):
-                    return True
+# Function to check if a move is valid
+def is_valid_move(board, row, col, player):
+    if board[row][col] != ' ':  # Check if the square is empty
         return False
+    # Check in all directions for a valid move: left, down, up, right
+    for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        if is_valid_direction(board, row, col, dr, dc, player):
+            return True
+    return False
 
-    def is_valid_direction(self, board, row, col, dr, dc):
-        r, c = row + dr, col + dc
-        if not (0 <= r < 8 and 0 <= c < 8):
+# Function to check if a direction is valid
+def is_valid_direction(board, row, col, dr, dc, player):
+    r, c = row + dr, col + dc
+    if not (0 <= r < GRID_SIZE and 0 <= c < GRID_SIZE):
+        return False
+    if board[r][c] != opposite_player(player):
+        return False
+    r += dr
+    c += dc
+    while 0 <= r < GRID_SIZE and 0 <= c < GRID_SIZE:
+        if board[r][c] == ' ':  # Check if the chain is broken
             return False
-        if board[r][c] != self.other_player:
-            return False
+        if board[r][c] == player:  # Check if the chain ends with the player's piece
+            return True
         r += dr
         c += dc
-        while 0 <= r < 8 and 0 <= c < 8:
-            if board[r][c] == ' ':
-                return False
-            if board[r][c] == self.current_player:
-                return True
-            r += dr
-            c += dc
-        return False
+    return False
 
-    # operates on the existing self.board and takes 2 args: row and col -> caused the error in the pruning func
-    # therefore, i modified it so that
-    # it accepts the board as an additional arg,
-    # allowing it to make a move on any board -> (board_copy)
 
-    def make_move(self, board, row, col):
-        # self.board[row][col] = self.current_player
-        board[row][col] = self.current_player
-        self.remaining_disks -= 1
+# Function to make a move and flip the disks
+# Function to make a move and flip the disks
+def make_move(board, row, col, player):
+    board[row][col] = player  # Place the player's piece on the board
+    # Check in the left, right, up, and down directions for flipping disks
+    for dr, dc in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+        if is_valid_direction(board, row, col, dr, dc, player):
+            r, c = row + dr, col + dc
+            # Flip disks in the valid direction
+            #condition checks if the current position (r, c) on the board does not contain the player's piece
+            # . If it doesn't,
+            # it means there is an opponent's piece at that position that needs to be flipped.
+            while board[r][c] != player:
+                board[r][c] = player
+                r += dr
+                c += dc
 
-        if self.current_player == 'B':
-            self.black_disks += 1
-            self.white_disks -= 1
+# Function to get the opposite player
+def opposite_player(player):
+    return 'B' if player == 'W' else 'W'
+
+
+
+
+# Function to get the valid moves for a player
+def get_valid_moves(board, player):
+    valid_moves = []  # Initialize an empty list to store valid moves
+    # Iterate over all squares on the board
+    for i in range(GRID_SIZE):
+        for j in range(GRID_SIZE):
+            if is_valid_move(board, i, j, player):  # Check if the move is valid for the player
+                valid_moves.append((i, j))  # Add valid moves to the list
+    return valid_moves  # Return the list of valid moves
+
+# Function to evaluate the board for the alpha-beta pruning algorithm
+def evaluate_board(board):
+    # Count the number of black pieces on the board
+    black_count = sum(row.count('B') for row in board)
+    # Count the number of white pieces on the board
+    white_count = sum(row.count('W') for row in board)
+    # Return the difference between the counts of black and white pieces
+    return black_count - white_count
+
+
+# Alpha-beta pruning algorithm
+def alpha_beta_pruning(board, depth, alpha, beta, maximizing_player, player):
+    if depth == 0 or not get_valid_moves(board, player):  # Check for terminal condition
+        return (evaluate_board(board), None)  # Returning evaluation and None for move
+    if maximizing_player:
+        max_eval = float('-inf')  # Initialize maximum evaluation
+        best_move = None  # Initialize the best move
+        for move in get_valid_moves(board, player):  # Iterate over valid moves
+            board_copy = copy.deepcopy(board)  # Create a copy of the board
+            make_move(board_copy, move[0], move[1], player)  # Make the move
+            # Recursively evaluate the board for the next player
+            eval, _ = alpha_beta_pruning(board_copy, depth - 1, alpha, beta, False, player)
+            if eval > max_eval:
+                max_eval = eval  # Update maximum evaluation
+                best_move = move  # Update the best move
+            alpha = max(alpha, eval)  # Update alpha value
+            if beta <= alpha:
+                break  # Beta cutoff
+        return (max_eval, best_move)  # Return maximum evaluation and best move
+    else:
+        min_eval = float('inf')  # Initialize minimum evaluation
+        best_move = None  # Initialize the best move
+        for move in get_valid_moves(board, opposite_player(player)):  # Iterate over valid moves
+            board_copy = copy.deepcopy(board)  # Create a copy of the board
+            make_move(board_copy, move[0], move[1], opposite_player(player))  # Make the move
+            # Recursively evaluate the board for the next player
+            eval, _ = alpha_beta_pruning(board_copy, depth - 1, alpha, beta, True, player)
+            if eval < min_eval:
+                min_eval = eval  # Update minimum evaluation
+                best_move = move  # Update the best move
+            beta = min(beta, eval)  # Update beta value
+            if beta <= alpha:
+                break  # Alpha cutoff
+        return (min_eval, best_move)  # Return minimum evaluation and best move
+
+# Function to prompt the user to choose the difficulty level
+def choose_difficulty():
+    while True:
+        print("Choose difficulty level:")
+        print("1. Easy")
+        print("2. Medium")
+        print("3. Hard")
+        choice = input("Enter your choice (1, 2, or 3): ")
+        if choice in ['1', '2', '3']:
+            return int(choice)  # Return the selected difficulty level
         else:
-            self.white_disks += 1
-            self.black_disks -= 1
+            print("Invalid choice. Please enter 1, 2, or 3.")
 
-        for dr in [-1, 0, 1]:
-            for dc in [-1, 0, 1]:
-                if dr == 0 and dc == 0:
-                    continue
-                # if self.is_valid_direction(self.board, row, col, dr, dc):
-                if self.is_valid_direction(board, row, col, dr, dc):
-                    self.flip_discs(board, row, col, dr, dc)
-                    # self.flip_discs(row, col, dr, dc) <- MISSING ARG
-
-    # modified it to work with any board instead of relying on self.board
-    def flip_discs(self, board, row, col, dr, dc):
-        r, c = row + dr, col + dc
-        # while self.board[r][c] == self.other_player:
-        while board[r][c] == self.other_player:
-            # self.board[r][c] = self.current_player
-            board[r][c] = self.current_player
-            r += dr
-            c += dc
-
-    def is_game_over(self):
-        return self.remaining_disks == 0 or not self.get_valid_moves()
-
-    def get_winner(self):
-        black_count = sum(row.count('B') for row in self.board)
-        white_count = sum(row.count('W') for row in self.board)
-        if black_count > white_count:
-            return 'Black'
-        elif white_count > black_count:
-            return 'White'
-        else:
-            return 'Tie'
-
-    def get_valid_moves(self):
-        valid_moves = []
-        for i in range(8):
-            for j in range(8):
-                if self.is_valid_move(self.board, i, j):
-                    valid_moves.append((i, j))
-        return valid_moves
-
-    def alpha_beta_pruning(self, board, depth, alpha, beta, maximizing_player):
-        if depth == 0 or self.is_game_over():
-            return (self.evaluate_board(board), None)  # Returning evaluation and None for move
-        if maximizing_player:
-            max_eval = float('-inf')
-            best_move = None
-            for move in self.get_valid_moves():
-                board_copy = copy.deepcopy(board)
-                # if move is not None:
-                self.make_move(board_copy, move[0], move[1])
-                eval, _ = self.alpha_beta_pruning(board_copy, depth - 1, alpha, beta, False)
-
-                if eval > max_eval:
-                    max_eval = eval
-                    best_move = move
-
-                alpha = max(alpha, eval)
-
-                if beta <= alpha:
-                    break
-            return (max_eval, best_move)
-        else:
-            min_eval = float('inf')
-            best_move = None
-
-            for move in self.get_valid_moves():
-                board_copy = copy.deepcopy(board)
-                # if move is not None:
-                self.make_move(board_copy, move[0], move[1])
-                eval, _ = self.alpha_beta_pruning(board_copy, depth - 1, alpha, beta, True)
-
-                if eval < min_eval:
-                    min_eval = eval
-                    best_move = move
-
-                beta = min(beta, eval)
-
-                if beta <= alpha:
-                    break
-
-            return (min_eval, best_move)
-
-    def evaluate_board(self, board):
-        black_count = sum(row.count('B') for row in board)
-        white_count = sum(row.count('W') for row in board)
-        return black_count - white_count
-
-    def difficulty_to_depth(self):
-        if self.difficulty == "Easy":
-            return 1
-        elif self.difficulty == "Medium":
-            return 3
-        elif self.difficulty == "Hard":
-            return 5
-        else:
-            return 3 # default
-
+# Main game loop
 def main():
-    root = tk.Tk()
-    gui = OthelloGUI(root)
-    gui.bind_board_clicks()
-    root.mainloop()
+    difficulty = choose_difficulty()  # Choose the difficulty level
+    depth = 4  # Default depth for the alpha-beta pruning algorithm
+    if difficulty == 1:
+        depth = 2
+    elif difficulty == 2:
+        depth = 4
+    elif difficulty == 3:
+        depth = 6
 
-if __name__ == "__main__":
-    main()
+    # Initialize the game board with initial pieces
+    board = [[' ' for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
+    board[3][3] = 'W'  # Initial setup: Place two white disks at the center
+    board[4][4] = 'W'
+    board[3][4] = 'B'  # Initial setup: Place two black disks at the center
+    board[4][3] = 'B'
+    player = 'B'  # Black always moves first
+
+    # Game loop
+    # Game loop
+    running = True  # Set the game loop flag to True
+    while running:  # Start the game loop
+        for event in pygame.event.get():  # Iterate through all pygame events
+            if event.type == pygame.QUIT:  # Check if the user closes the window
+                running = False  # Set the game loop flag to False to exit the loop
+            if event.type == pygame.MOUSEBUTTONDOWN and player == 'B':  # Check if it's the human player's turn
+                # Human player's turn
+                mouse_pos = pygame.mouse.get_pos()  # Get the mouse position
+                col = mouse_pos[0] // SQUARE_SIZE  # Calculate the column based on the mouse position
+                row = mouse_pos[1] // SQUARE_SIZE  # Calculate the row based on the mouse position
+                if is_valid_move(board, row, col, player):  # Check if the move is valid
+                    make_move(board, row, col, player)  # Make the move
+                    player = opposite_player(player)  # Switch to the opposite player's turn
+            elif player == 'W':  # Check if it's the computer player's turn
+                # Computer player's turn
+                _, move = alpha_beta_pruning(board, depth, float('-inf'), float('inf'), True,
+                                             player)  # Apply alpha-beta pruning to find the best move
+                if move is not None:  # Check if a valid move is found
+                    make_move(board, move[0], move[1], player)  # Make the move
+                    player = opposite_player(player)  # Switch to the opposite player's turn
+
+        draw_board(board)  # Draw the updated board
+
+    # Start the game
+    main()  # Call the main function to start the game
+
+
+# Quit pygame
+pygame.quit()
