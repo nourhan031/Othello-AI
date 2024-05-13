@@ -83,8 +83,10 @@ class OthelloGUI:
     def on_click(self, event):
         col = event.x // 50
         row = event.y // 50
-        if self.game.is_valid_move(row, col):
-            self.game.make_move(row, col)
+        # if self.game.is_valid_move(row, col):
+        if self.game.is_valid_move(self.game.board, row, col):
+            # self.game.make_move(row, col)
+            self.game.make_move(self.game.board, row, col)
             self.update_board()
             self.update_info()
             self.update_scoreboard()
@@ -184,12 +186,18 @@ class OthelloGame:
         else:
             depth = self.difficulty_to_depth()
 
-        eval, move = self.alpha_beta_pruning(self.board, depth, float('-inf'), float('inf'), True)
+        # eval, move = self.alpha_beta_pruning(self.board, depth, float('-inf'), float('inf'), True)
+        board_copy = copy.deepcopy(self.game.board)
+        eval, move = self.game.alpha_beta_pruning(board_copy, depth, float('-inf'), float('inf'), True)
         if move is not None:
             # self.make_move(*move)
-            self.make_move(self.board, move[0], move[1])
-            self.print_board()
-            print(f"Computer plays at row {move[0]}, column {move[1]}")
+            # self.make_move(self.board, move[0], move[1])
+            self.game.make_move(board_copy, move[0], move[1])
+            self.update_board()
+            self.update_info()
+            self.update_scoreboard()
+        #     self.print_board()
+        #     print(f"Computer plays at row {move[0]}, column {move[1]}")
         else:
             print("No valid moves for the computer.")
 
