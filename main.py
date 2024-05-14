@@ -14,6 +14,9 @@ pygame.init()
 screen = pygame.display.set_mode(WINDOW_SIZE)
 pygame.display.set_caption("Othello")
 
+# Define font
+font = pygame.font.Font(None, 36)
+
 # Function to draw the board
 def draw_board(board, valid_moves=None):
     screen.fill(GREEN)
@@ -122,29 +125,53 @@ def alpha_beta_pruning(board, depth, alpha, beta, maximizing_player, player):
                 break
         return (min_eval, best_move)
 
-# Function to prompt the user to choose the difficulty level
-def choose_difficulty():
-    while True:
-        print("Choose difficulty level:")
-        print("1. Easy")
-        print("2. Medium")
-        print("3. Hard")
-        choice = input("Enter your choice (1, 2, or 3): ")
-        if choice in ['1', '2', '3']:
-            return int(choice)
-        else:
-            print("Invalid choice. Please enter 1, 2, or 3.")
-
 # Function to display game results and scoreboard
 def display_results(screen, winner):
-    font = pygame.font.Font(None, 36)
     text = font.render(f"Winner: {winner}", True, WHITE)
     text_rect = text.get_rect(center=(WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2))
     screen.blit(text, text_rect)
     pygame.display.flip()
 
+# Function to display difficulty level buttons
+def display_difficulty_buttons():
+    easy_button = pygame.Rect(50, 100, 100, 50)
+    medium_button = pygame.Rect(50, 200, 100, 50)
+    hard_button = pygame.Rect(50, 300, 100, 50)
+
+    pygame.draw.rect(screen, BLACK, easy_button)
+    pygame.draw.rect(screen, BLACK, medium_button)
+    pygame.draw.rect(screen, BLACK, hard_button)
+
+    text_easy = font.render("Easy", True, WHITE)
+    text_medium = font.render("Medium", True, WHITE)
+    text_hard = font.render("Hard", True, WHITE)
+
+    screen.blit(text_easy, easy_button)
+    screen.blit(text_medium, medium_button)
+    screen.blit(text_hard, hard_button)
+
+    pygame.display.flip()
+
+# Function to prompt the user to choose the difficulty level
+def choose_difficulty():
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                if 50 <= x <= 150 and 100 <= y <= 150:
+                    return 1  # Easy
+                elif 50 <= x <= 150 and 200 <= y <= 250:
+                    return 2  # Medium
+                elif 50 <= x <= 150 and 300 <= y <= 350:
+                    return 3  # Hard
+        pygame.time.delay(10)
+
 # Main game loop
 def main():
+    display_difficulty_buttons()
     difficulty = choose_difficulty()
     depth = 4  # Default depth for the alpha-beta pruning algorithm
     if difficulty == 1:
@@ -172,14 +199,15 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN and player == 'B':
-                # Human player's turn
-                mouse_pos = pygame.mouse.get_pos()
-                col = mouse_pos[0] // SQUARE_SIZE
-                row = mouse_pos[1] // SQUARE_SIZE
-                if (row, col) in valid_moves:
-                    make_move(board, row, col, player)
-                    player = opposite_player(player)
-                    consecutive_passes = 0  # Reset consecutive passes if a move is made
+                if event.button == 1:
+                    # Human player's turn
+                    mouse_pos = pygame.mouse.get_pos()
+                    col = mouse_pos[0] // SQUARE_SIZE
+                    row = mouse_pos[1] // SQUARE_SIZE
+                    if (row, col) in valid_moves:
+                        make_move(board, row, col, player)
+                        player = opposite_player(player)
+                        consecutive_passes = 0  # Reset consecutive passes if a move is made
             elif player == 'W':
                 # Computer player's turn
                 _, move = alpha_beta_pruning(board, depth, float('-inf'), float('inf'), True, player)
