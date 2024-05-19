@@ -14,10 +14,7 @@ This project implements the classic Othello (Reversi) game using Python and Pyga
 
 1. Ensure you have Python and Pygame installed.
 2. Clone the repository or download the files.
-3. Run `main.py` to start the game:
-    ```bash
-    python main.py
-    ```
+3. Run `main.py` to start the game.
 4. Choose the difficulty level when prompted.
 5. The human player (Black) moves first by clicking on the board, while the AI opponent (White) makes moves automatically.
 
